@@ -195,6 +195,11 @@
 * viewed template on github browser
 * edited the entry for Mon 27
 
+```
+cd  ~/mydata
+ls
+```
+
 
 ------    
 <div id='id-section12'/>   
