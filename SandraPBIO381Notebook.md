@@ -189,7 +189,7 @@
 * Created notebook
 * downloaded the template from Lauren
 * copied the template
-* pasted template on PC/Desktop/Github/Ecological -Genomics 2020
+* pasted template on This PC/Documents/Github/Ecological -Genomics 2020
 * committed the template
 * pushed the template from Github desktop to Github browser
 * viewed template on github browser
