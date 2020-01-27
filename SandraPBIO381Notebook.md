@@ -199,7 +199,54 @@
 cd  ~/mydata
 ls
 ```
+* edited assignment on command line tutorial
 
+```
+pwd
+ls
+git clone https://github.com/Sandra-ctrl/Ecological-Genomics-2020
+cd Ecological-Genomics-2020/
+ll
+mkdir mydata
+ll
+mkdir myscripts
+mkdir myresults
+ll
+cd /data/project_data/RS_ExomeSeq
+ll
+cd metadata
+ll
+cp RS_Exome_metadata.txt ~/Ecological-Genomics-2020// mydata/
+cd ~/Ecological-Genomics-2020/mydata/
+ll
+head RS_Exome_metadata.txt
+grep -w "E" RS_Exome_metadata.txt |wc
+grep -w "E" RS_Exome_metadata.txt >Edge_only.txt
+ls
+man grep
+grep -w "E" RS_Exome_metadata.txt | wc -l
+grep -w "E" RS_Exome_metadata.txt |cut -f1 | uniq
+grep -w "E" RS_Exome_metadata.txt |cut -f1 | uniq |wc -l
+grep -w "E" RS_Exome_metadata.txt |cut -f1 | uniq >EdgePops.txt
+ll
+mkdir metadata
+mv *txt metadata/
+ll metadata/
+cd metadata/
+grep -w "AB" RS_Exome_metadata.txt >AB.txt
+ll
+rm AB.txt
+ll
+ll -a
+vim .bashrc
+cd Ecological-Genomics-2020
+git pull
+git add --all
+git commit -m "syncing server with current repo"
+git push
+exit
+
+```
 
 ------    
 <div id='id-section12'/>   
