@@ -1,8 +1,8 @@
 ﻿# Title  
 
-## Author: Lauren Ashlock  
-### Affiliation:  
-### E-mail contact: 
+## Author: Sandra Nnadi 
+### Affiliation:  PhD Student
+### E-mail contact: sandra.nnadi@uvm.edu
 
 
 ### Start Date: 2020-01-13
@@ -24,7 +24,7 @@
 * [Entry 8: 2020-01-22, Wednesday](#id-section8)
 * [Entry 9: 2020-01-23, Thursday](#id-section9)
 * [Entry 10: 2020-01-24, Friday](#id-section10)
-* [Entry 11: 2020-01-27, Monday](#id-section11)
+* [Entry 11: 2020-01-27, Monday](#Set up my Lab notebook)
 * [Entry 12: 2020-01-28, Tuesday](#id-section12)
 * [Entry 13: 2020-01-29, Wednesday](#id-section13)
 * [Entry 14: 2020-01-30, Thursday](#id-section14)
@@ -186,7 +186,14 @@
 
 
 ### Entry 11: 2020-01-27, Monday.   
-
+*Created notebook
+*downloaded the template from Lauren
+*copied the template
+*pasted template on PC/Desktop/Github/Ecological -Genomics 2020
+*committed the template
+*pushed the template from Github desktop to Github browser
+*viewed template on github browser
+*edited the entry for Mon 27
 
 
 ------    
