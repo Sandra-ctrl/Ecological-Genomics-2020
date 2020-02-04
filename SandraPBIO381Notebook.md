@@ -261,7 +261,36 @@ exit
 
 
 ### Entry 13: 2020-01-29, Wednesday.   
+POPGEN Day 1 Objectives
+* To get background on the ecology of Red spruce (Picea rubens), and the experimental design of the exome capture data
+* To understand the general work flow or “pipeline” for processing and analyzing the exome capture sequence data
+* To visualize and interpret Illumina data quality (what is a fastq file; what are Phred scores?).
+* To learn how to make/write a bash script, and how to use bash commands to process files in batches
+* To trim the reads based on base quality scores
+* To start mapping (a.k.a. aligning) each set of cleaned reads to a reference genome
 
+difference between .Rmd and .md
+.Rmd allows the ability to execute R code within R while .md allows any file on github ending with .md look nice. 
+# creates a header
+## increases the font
+### makes font bigger
+ * (space) to create bullets
+ [ } to create weblink
+ e.g [genomics is cool] (http://...com)
+ 
+ embedding code with back tick
+ ```
+ cd ~/mydata
+ ll
+ ```
+ will give you a code block
+ 
+ introduction to Red Spruce. details found in tutorial.
+ current red spruce species are at the limit of migration thus making them vulnerable to climate change
+ Steve Keller team are studying the genetic basis of climate adaptation using exome data and a retrospective approach. 
+ 
+ 
+ 
 
 
 ------    
