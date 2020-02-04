@@ -289,8 +289,158 @@ difference between .Rmd and .md
  current red spruce species are at the limit of migration thus making them vulnerable to climate change
  Steve Keller team are studying the genetic basis of climate adaptation using exome data and a retrospective approach. 
  
+# The Pipeline
+Visualize, Clean, Visualize
+* Visualize the quality of raw data (Program: FastQC)
+
+* Clean raw data (Program: Trimmomatic)
+
+* Visualize the quality of cleaned data (Program: FastQC)
+
+Calculate #’s of cleaned, high quality reads going into mapping
+
+Map (a.k.a. Align) cleaned reads from each sample to the reference assembly to generate sequence alignment files (Program: bwa, Input: .fastq, Output: .sam).
+
+Remove PCR duplicates identified during mapping, and calculate alignment statistics (% of reads mapping succesully, mapping quality scores, average depth of coverage per individual)
  
+```
+cd /data/project_data/RS_ExomeSeq/fastq/edge_fastq
+ll
+zcat AB_05_R1_fastq.gz | head -n 4
+```
+@GWNJ-0842:368:GW1809211440:2:1101:17168:1907 1:N:0:NGAAGAGA+NTTCGCCT
+GATGGGATTAGAGCCCCTGAAGGCTGATAGAACTTGAGTTTCACAGGCTCATTGCATTGAAGTGGCATTTGTGTGAATGCAGAGGAGGTACATAGGTCCTCGAGAATAAAAGAGATGTTGCTCCTCACCAAAATCAGTACAGATTATTTT
++
+A<A-F<AFJFJFJA7FJJJJFFJJJJJJ<AJ-FJJ7-A-FJAJJ-JJJA7A7AFJ<FF--<FF7-AJJFJFJA-<A-FAJ<AJJ<JJF--<A-7F-777-FA77---7AJ-JF-FJF-A--AJF-7FJFF77F-A--7<-F--77<JFF<
+
+line 1	Always begins with ‘@’ and then information about the read
+line 2	The actual DNA sequence
+line 3	Always begins with a ‘+’ and sometimes the same info in line 1
+line 4	A string of characters which represent the quality scores; always has same number of characters as line 2
+
+If P is the probability that a base call is an error, then:
+
+P = 10^(–Q/10)
+
+Q = –10 log10(P)
+
+So:
+
+Phred Quality Score	      Probability of incorrect base call	       Base call accuracy
+10	                                1 in 10	                               90%
+20	                                1 in 100	                              99%
+30	                                1 in 1000	                             99.9%
+40	                                1 in 10,000	                           99.99%
+
+The Phred Q score is translated to ASCII characters so that a two digit number can be represented by a single character.
+
+ Quality encoding: !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHI
+                   |         |         |         |         |
+    Quality score: 0........10........20........30........40 
+    
+```
+mkdir ~/Ecological-Genomics-2020/myresults/fastqc
+fastqc FILENAME.fastq.gz -o outputdirectory/
+vim
+for file in KOS*fastq.gz
+
+do
+
+ fastqc ${file} -o ~/<Ecological-Genomics-2020/myresults/fastqc
+
+done
+ll
+```
+to change permission on script to make it executable
+
+```
+chmod u+x fastqc.sh
+./fastqc.sh
+```
+chmod u+x fastqc.sh    # makes the script "executable" by the "user"
+./fastqc.sh             # executes the script
+
+there was a little error with the location of the fastqc/ file. i could not locate it in the myresults folder, so i did the following
+
+```
+cd myresults
+mkdir fastqc
+cd fastqc
+mv ~/Ecological-Genomics-2020/myscripts/fastqc/* 
+ll
+git pull
+git add --all
+git commit -m "syncing server with fastqc repo"
+git push
+
+```
+# clean using trimmomatic
+Copy the bash script over to your ~/myrepo/myscripts directory
+Open and edit the bash script using the program vim.
+Edit the file so that you’re trimming the fastq files for the population assigned to you
+Change the permissions on your script to make it executable, then run it! (examples below)
+cp /data/scripts/trim_loop.sh  ~/myrepo/myscripts/ 
+# copies the script to your home scripts dir
+vim trim_loop.sh    # open the script with vim to edit
+
+```
+cp /data/scripts/trim_loop.sh  ~/Ecological-Genomics-2020/myscripts/
+vim trim_loop.sh
+bash trim_loop.sh
+
+```
+This time we use the variable coding to call the name of the R1 read pair, define the name for the second read in the pair (R2), and create a basename that only contains the “pop_ind” part of the name, i.e. AB_05
+
+    R2=${R1/_R1_fastq.gz/_R2_fastq.gz}   # defines the name for the second read in the pair (R2) based on knowing the R1 name (the file names are identifcal except for the R1 vs. R2 designation)
+    f=${R1/_R1_fastq.gz/}   # creates a new variable from R1 that has the "_R1_fastq.gz" stripped off
+    name=`basename ${f}`   # calls the handy "basename" function to define a new variable containing only the very last part of the filename while stripping off all the path information.  This gets us the "AB_05" bit we want.
+
+Here’s how it should look (replace AB with your population name):
+
+#!/bin/bash   
  
+cd /data/project_data/RS_ExomeSeq/fastq/edge_fastq  
+
+for R1 in AB*R1_fastq.gz  
+
+do 
+ 
+    R2=${R1/_R1_fastq.gz/_R2_fastq.gz}
+    f=${R1/_R1_fastq.gz/}
+    name=`basename ${f}`
+
+    java -classpath /data/popgen/Trimmomatic-0.33/trimmomatic-0.33.jar org.usadellab.trimmomatic.TrimmomaticPE \
+        -threads 1 \
+        -phred33 \
+         "$R1" \
+         "$R2" \
+         /data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/${name}_R1.cl.pd.fq \
+         /data/project_data/RS_ExomeSeq/fastq/edge_fastq/unpairedcleanreads/${name}_R1.cl.un.fq \
+         /data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/${name}_R2.cl.pd.fq \
+         /data/project_data/RS_ExomeSeq/fastq/edge_fastq/unpairedcleanreads/${name}_R2.cl.un.fq \
+        ILLUMINACLIP:/data/popgen/Trimmomatic-0.33/adapters/TruSeq3-PE.fa:2:30:10 \
+        LEADING:20 \
+        TRAILING:20 \
+        SLIDINGWINDOW:6:20 \
+        MINLEN:35 
+ 
+done 
+
+ILLUMINACLIP: Cut adapter and other illumina-specific sequences from the read.
+LEADING: Cut bases off the start of a read, if below a threshold quality
+TRAILING: Cut bases off the end of a read, if below a threshold quality
+SLIDINGWINDOW: Perform a sliding window trimming, cutting once the average quality within the window falls below a threshold.
+MINLEN: Drop the read if it is below a specified length
+
+```
+cd /data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/
+ll /data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/ | wc -l
+cd ~/
+exit
+
+```
+
+
 
 
 ------    
