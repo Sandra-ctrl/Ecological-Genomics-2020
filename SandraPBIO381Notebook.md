@@ -481,6 +481,141 @@ exit
 
 ### Entry 18: 2020-02-05, Wednesday.   
 
+Learning Objectives
+1.	Review our progress on read cleaning and visualizing QC
+2.	Start mapping (a.k.a. aligning) each set of cleaned reads to a reference genome
+3.	Visualize sequence alignment files
+4.	Process our sam files by
+*  converting to binary (bam) format and sorting by coordinates
+*  removing PCR duplicates
+*  indexing for fast future lookup
+5.	Calculate mapping statistics to assess quality of the result
+6.	Learn how to put separate bash scripts into a “wrapper” that runs them all
+
+# Wget lets the server talk to the internet, a command that downloads files from the web
+
+```
+cd /data/project_data/RS_ExomeSeq/ReferenceGenomes/
+wget "http://plantgenie.org/Picea_abies/v1.0/FASTA/GenomeAssemblies/Pabies1.0-genome.fa.gz"
+
+```
+Rather than trying to map to the entire 19.6 Gbp reference, we first subsetted the P. abies reference to include just the contigs that contain one or more probes from our exon capture experiment. For this, we did a BLAST search of each probe against the P. abies reference genome, and then retained all scaffolds that had a best hit.
+*  This reduced reference contains:
+*  668,091,227 bp (~668 Mbp) in 33,679 contigs
+*  The mean (median) contig size is 10.5 (12.9) kbp
+*  The N50 of the reduced reference is 101,375 bp
+*  The indexed reduced reference genome to use for your mapping is on our server here: 
+
+```
+/data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
+
+```
+N50- Metric of the state of the assembly. How much of the genome is assembled into big contigs than the smaller number? How far you must keep going until you hit 334mb. Smallest contig at which the sum of the total contig. it gives you a sense of how mature the genome assembly is. Gives you more spatial information. Is the length in base pairs, so bigger number is actually better
+
+# writing short scripts
+
+* First, we want to specify the population of interest and the paths to the input and output directories. We can do this by defining variables in bash, like so:
+* Set your repo address here – double check yours carefully!
+* myrepo="/users/s/r/srkeller/Ecological_Genomics/Spring_2020"
+* Each student gets assigned a population to work with: mypop="YOURPOP""
+* Directory with your pop-specific demultiplexed fastq files
+* input="/data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/${mypop}"
+* Output dir to store mapping files (bam)
+* output="/data/project_data/RS_ExomeSeq/mapping"
+
+# mypipeline.sh
+
+#!/bin/bash
+
+# we'll use this as a wrapper to run our different mapping scripts
+
+# path to my repo:
+myrepo="/users/s/n/snnadi/Ecological-Genomics-2020"
+
+# My population:
+
+mypop="KOS"
+
+#Directory to our cleaned and paired reads:
+
+input="/data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/${mypop}"
+
+#Directory to store the output of our mapping
+output="/data/project_data/RS_ExomeSeq/mapping"
+
+#run mapping.sh
+
+source ./mapping.sh
+
+#run the post processing steps
+
+source ./process_bam.sh
+
+
+# For mapping, 
+we’ll use the program bwa, which is a very efficient and very well vetted read mapper. Lots of others exist and can be useful to explore for future datasets. We tried several, and for our exome data, bwa seems to be the best
+* Let’s write a bash script called mapping.sh that calls the R1 and R2 reads for each individual in our population, and uses the bwa-mem algorithm to map reads to the reference genome. We can test this out using one sample (individual) at a time, and then once the syntax is good and the bugs all worked out, we can scale this up to all the inds in our popuations. The basic bwa command we’ll use is below. Think about how we should write this into a loop to call all the fastq files for our population of interest…(hint, look back at the trim_loop.sh script)
+
+bwa mem -t 1 -M ${ref} ${forward} ${reverse} > ${output}/BWA/${name}.sam
+where
+-t 1 is the number of threads, or computer cpus to use (in this case, just 1)
+-M labels a read with a special flag if its mapping is split across >1 contig
+-${ref} specifies the path and filename for the reference genome
+${forward} specifies the path and filename for the cleaned and trimmed R1 reads 
+${reverse} specifies the path and filename for the cleaned and trimmed R2 reads 
+>${output}/BWA/${name}.sam  directs the .sam file to be saved into a directory called BWA
+
+# script for mapping
+
+#!/bin/bash
+
+#this script will run the read mapping using "bwa" program
+
+ref="/data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa"
+
+#write a loop to map each individual within my population
+
+for forward in ${input}*_R1.cl.pd.fq
+
+do
+  reverse=${forward/_R1.cl.pd.fq/_R2.cl.pd.fq}
+  f=${forward/_R1.cl.pd.fq/}
+  name=`basename ${f}`
+  bwa mem -t 1 -M ${ref} ${forward} ${reverse} > ${output}/BWA/${name}.sam
+done
+
+
+
+# script for processing
+
+#!/bin/bash
+
+#this is where our output sam files are going to get converted into binary format (bam)
+#then we are going to sort the bam files, remove the PCR duplicates and index them
+
+#first, lets convert sam to bam
+
+for f in ${output}/BWA/${mypop}*.sam
+
+do
+
+  out=${f/.sam/}
+  sambamba-0.7.1-linux-static view -S --format=bam ${f} -o ${out}.bam
+  samtools sort ${out}.bam -o ${out}.sorted.bam 
+  
+done
+
+#now lets remove the PCR duplicates from our bam files
+
+for file in ${output}/BWA/${mypop}*.sorted.bam
+
+do
+
+  f=${file/.sorted.bam/}
+  sambamba-0.7.1-linux-static markdup -r -t 1 ${file} ${f}.sorted.rmdup.bam
+  
+done
+
 
 
 ------    
