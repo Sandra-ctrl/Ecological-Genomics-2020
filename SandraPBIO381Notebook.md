@@ -616,6 +616,40 @@ do
   
 done
 
+```
+cd Ecological-Genomics-2020/
+cd myresults/
+ll
+cd fastqc
+cd ..
+cd /data/project_data/RS_ExomeSeq/fastq/edge_fastq/
+ll
+cd pairedcleanreads/
+cd /
+pwd
+ll
+exit 
+
+```
+
+```
+cd Ecological-Genomics-2020/
+ll /data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/
+# My population
+mypop="KOS"
+#Directory to our cleaned and paired reads
+input="/data/project_data/RS_ExomeSeq/fastq/edge_fastq/pairedcleanreads/${mypop}"
+echo ${input}
+output="/data/project_data/RS_ExomeSeq/mapping"
+bwa
+ll /data/project_data/RS_ExomeSeq/ReferenceGenomes/
+pwd
+ll /data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
+echo ${mypop}
+
+
+
+
 
 
 ------    
