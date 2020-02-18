@@ -728,6 +728,37 @@ ll
 ll KOS*sam
 head KOS_01.sam
 tail KOS_01.sam
+samtools flagstat KOS_01.sam
+cd ~/Ecological-Genomics-2020/
+pwd
+/users/s/n/snnadi/Ecological-Genomics-2020
+mypop+"KOS"
+myrepo="/users/s/n/snnadi/Ecological-Genomics-2020"
+output="/data/project_data/RS_ExomeSeq/mapping"
+echo "num.reads R1 R2 Paired MateMapped Singletons MateMappedDiffChr" > ${myrepo}/myresults/${mypop}.flagstats.txt
+ll
+cd myresults/
+ll
+cat KOS.flagstats.txt
+for file in ${output}/BWA/${mypop}*sorted.rmdup.bam; do  f=${file/.sorted.rmdup.bam/}; name=`basename ${f}`
+echo ${name} >> ${myrepo}/myresults/${mypop}.names.txt
+samtools flagstat ${file} | awk 'NR>6&&NR<=12 {print $1}' | column -x
+done >> ${myrepo}/myresults/${mypop}.flagstats.txt
+cat ${output}/BWA/${mypop}*sorted.rmdup.bam
+ll ${output}/BWA/${mypop}*
+less ${myrepo}/myresults/${mypop}.flagstats.txt
+rm ${myrepo}/myresults/${mypop}.flagstats.txt
+cat ${myrepo}/myresults/${mypop}.flagstats.txt
+cat ${myrepo}/myresults/${mypop}.names.txt
+for file in ${output}/BWA/${mypop}*sorted.rmdup.bam; do  
+samtools depth ${file} | awk '{sum+=$3} END {print sum/NR}'
+done >> ${myrepo}/myresults/${mypop}.coverage.txt
+ll /data/project_data/RS_ExomeSeq/mapping/BWA/
+samtools tview /data/project_data/RS_ExomeSeq/mapping/BWA/KOS_01.sorted.rmdup.bam /data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
+samtools tview /data/project_data/RS_ExomeSeq/mapping/BWA/KOS_02.sorted.rmdup.bam /data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
+
+
+
 
 
 ------    
