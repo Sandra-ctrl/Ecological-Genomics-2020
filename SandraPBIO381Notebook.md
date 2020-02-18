@@ -646,6 +646,36 @@ ll /data/project_data/RS_ExomeSeq/ReferenceGenomes/
 pwd
 ll /data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
 echo ${mypop}
+mypop="KOS_01"
+ref="/data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa"
+#write a loop to map eac individual within my population
+ for forward in ${input}*_R1.cl.pd.fq; do reverse=${forward/_R1.cl.pd.fq/_R2.cl.pd.fq}; f=${forward/_R1.cl.pd.fq/}; name=`basename ${f}`; bwa mem -t 1 -M ${ref} ${forward} ${reverse} > ${output}/BWA/${name}.sam; done
+cd myscripts/
+ll
+chmod u+x mapping.sh
+chmod u+x mypipeline.sh
+chmod u+x process_bam.sh
+ll
+git pull
+screen
+top
+screen -r
+exit
+```
+# using the wildcard
+
+```
+ll /data/project_data/RS_ExomeSeq/mapping/BWA/
+ll /data/project_data/RS_ExomeSeq/mapping/BWA/KOS*
+ll /data/project_data/RS_ExomeSeq/mapping/BWA/KOS*bai
+ll /data/project_data/RS_ExomeSeq/mapping/BWA/KOS*.ba
+ll /data/project_data/RS_ExomeSeq/mapping/BWA/KOS*bam
+exit
+
+```
+
+
+
 
 
 
@@ -690,6 +720,14 @@ echo ${mypop}
 
 ### Entry 23: 2020-02-12, Wednesday.   
 
+
+
+```
+cd /data/project_data/RS_ExomeSeq/mapping/BWA/
+ll
+ll KOS*sam
+head KOS_01.sam
+tail KOS_01.sam
 
 
 ------    
