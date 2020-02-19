@@ -756,6 +756,13 @@ done >> ${myrepo}/myresults/${mypop}.coverage.txt
 ll /data/project_data/RS_ExomeSeq/mapping/BWA/
 samtools tview /data/project_data/RS_ExomeSeq/mapping/BWA/KOS_01.sorted.rmdup.bam /data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
 samtools tview /data/project_data/RS_ExomeSeq/mapping/BWA/KOS_02.sorted.rmdup.bam /data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
+pwd
+/users/s/n/snnadi/Ecological-Genomics-2020
+myrepo=/users/s/n/snnadi/Ecological-Genomics-2020
+mkdir ${myrepo}/myresults/ANGSD
+output="${myrepo}/myresults/ANGSD"
+mypop="KOS"
+ls /data/project_data/RS_ExomeSeq/mapping/BWA
 
 
 
