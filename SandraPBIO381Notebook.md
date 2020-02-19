@@ -720,6 +720,137 @@ exit
 
 ### Entry 23: 2020-02-12, Wednesday.   
 
+Learning Objectives for 02/12/20
+1.	Review our progress on mapping
+2.	Calculate mapping statistics to assess quality of the result (how many of the reads mapped uniquely, how many reads on average cover the site (depth) 
+3.	Visualize sequence alignment files
+4.	Introduce use of genotype-likelihoods for analyzing diversity in low coverage sequences. Embracing statiscal uncertainty in alignment
+5.	Use the ‘ANGSD’ progranm to calculate diversity stats, Fsts, and PCA
+Sam file is human readeable
+/data/project_data/RS_ExomeSeq/mapping/BWA/
+ll
+ll KOS*sam
+head KOS_01.sam
+tail KOS_01.sam
+
+a row of data consists of a potential data. The first row is the reads name. the next number is a flag (e.g 147 can be known by a SAM decode- means the read was paired. It was mapped together as forward and reverse. It’s the second read in the pair. It’s the reverse read.r)
+when a read maps to more than one spot its not a primary alignment
+the next is the contig that the read mapped to (MA_18732) the left most position of the read. 
+60 is the base quality score, 6 orders of magnitude, it’s a very strong match- mapping quality (MAQ) 
+Followed by the actual sequence and the quality scores
+
+A SAM file is a tab delimited text file that stores information about the alignment of reads in a FASTQ file to a reference genome or transcriptome. For each read in a FASTQ file, there’s a line in the SAM file that includes
+•	the read, aka. query, name,
+•	a FLAG (number with information about mapping success and orientation and whether the read is the left or right read),
+•	the reference sequence name to which the read mapped
+•	the leftmost position in the reference where the read mapped
+•	the mapping quality (Phred-scaled)
+•	a CIGAR string that gives alignment information (how many bases Match (M), where there’s an Insertion (I) or Deletion (D))
+•	an ‘=’, mate position, inferred insert size (columns 7,8,9),
+•	the query sequence and Phred-scaled quality from the FASTQ file (columns 10 and 11),
+•	then Lots of good information in TAGS at the end, if the read mapped, including whether it is a unique read (XT:A:U), the number of best hits (X0:i:1), the number of suboptimal hits (X1:i:0).
+The left (R1) and right (R2) reads alternate through the file. SAM files usually have a header section with general information where each line starts with the ‘@’ symbol. SAM and BAM files contain the same information; SAM is human readable and BAM is in binary code and therefore has a smaller file size.
+Find the official Sequence AlignMent file documentation can be found here or more officially.
+•	Here’s a SAM FLAG decoder by the Broad Institute. Use this to decode the second column of numbers
+Useful for getting info on the sam files
+How can we get a summary of how well our reads mapped to the reference?
+•	We can use the program samtools Written by Heng Li, the same person who wrote bwa. It is a powerful tool for manipulating sam/bam files.
+•	The command flagstat gets us some basic info on how well the mapping worked:
+•	samtools flagstat KOS_01.sam
+filename sorted.rmdup.bam
+filename sorted.rmdup.bai
+writing bamstats scripts
+#!/bin/bash
+
+#set repo
+
+myrepo="/users/s/n/snnadi/Ecological-Genomics-2020"
+
+mypop="KOS"
+
+output="/data/project_data/RS_ExomeSeq/mapping"
+
+echo "num.reads R1 R2 Paired MateMapped Singletons MateMappedDiffChr" > ${myrepo}/myresults/${mypop}.flagstats.txt
+
+for file in ${output}/BWA/${mypop}*sorted.rmdup.bam
+do
+  f=${file/.sorted.rmdup.bam/}
+  name=`basename ${f}`
+  echo ${name} >> ${myrepo}/myresults/${mypop}.names.txt
+  samtools flagstat ${file} | awk 'NR>=6&&NR<=12 {print $1}' | column -x 
+done >> ${myrepo}/myresults/${mypop}.flagstats.txt
+
+# Calculate depth of coverage from our bam files
+
+for file in ${output}/BWA/${mypop}*sorted.rmdup.bam
+do
+  samtools depth ${file} | awk '{sum+=$3} END {print sum/NR}'
+ done >> ${myrepo}/myresults/${mypop}.coverage.txt
+ 
+ While that’s running, we can take a look at one of our alignment files (sam or bam) using an integrated viewed in samtools called tview. To use it, simply call the program and command, followed by the sam/bam file you want to view and the path to the reference genome. For example:
+samtools tview /data/project_data/RS_ExomeSeq/mapping/BWA/AB_05.sorted.rmdup.bam /data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa
+Genotype-free population genetics using genotype likelihoods
+A growing movement in popgen analysis of NGS data is embracing the use of genotype likelihoods to calculate stats based on each individual having a likelihood (probability) of being each genotype.
+A genotype likelihood (GL) is essentially the probability of observing the sequencing data (reads containing a particular base), given the genotype of the individual at that site.
+These probabilities are modeled explicitly in the calculation of population diversty stats like pi, Tajima’s D, Fst, PCA, etc…; thus not throwing out any precious data, but also making fewer assumptions about the true (unknown) genotype at each locus
+•	We’re going to use this approach with the program ‘ANGSD’, which stands for ‘Analysis of Next Generation Sequence Data’
+•	This approach was pioneered by Rasmus Nielsen, published originally in Korneliussen et al. 2014.
+
+1.	Create a list of bam files for the samples you want to analyze
+2.	Estimate genotype likelihoods (GL’s) and allele frequencies after filtering to minimize noise
+3.	Use GL’s to:
+•	estimate the site frequency spectrum (SFS)
+•	estimate nucleotide diversities (Watterson’s theta, pi, Tajima’s D, …)
+•	estimate Fst between all populations, or pairwise between sets of populations
+•	perform a genetic PCA based on estimation of the genetic covariance matrix (this is done on the entire set of Edge ind’s)
+
+Writing ANGSD script
+myrepo="/users/s/n/snnadi/Ecological-Genomics-2020"
+
+mkdir ${myrepo}/myresults/ANGSD
+
+output="${myrepo}/myresults/ANGSD"
+
+mypop="KOS"
+
+ls /data/project_data/RS_ExomeSeq/mapping/BWA/${mypop}_*sorted.rm*.bam >${output}/${mypop}_bam.list 
+
+REF="/data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa"
+
+# Estimating GL's and allele frequencies for all sites with ANGSD
+
+ANGSD -b ${output}/${mypop}_bam.list \
+-ref ${REF} -anc ${REF} \
+-out ${output}/${mypop}_allsites \
+-nThreads 1 \
+-remove_bads 1 \
+-C 50 \
+-baq 1 \
+-minMapQ 20 \
+-minQ 20 \
+-setMinDepth 3 \
+-minInd 2 \
+-setMinDepthInd 1 \
+-setMaxDepthInd 17 \
+-skipTriallelic 1 \
+-GL 1 \
+-doCounts 1 \
+-doMajorMinor 1 \
+-doMaf 1 \
+-doSaf 1 \
+-doHWE 1 \
+# -SNP_pval 1e-6
+
+Baq1- Discounts snps close to  indels
+Min q- individual bases have to have a small prob of being called incorrectly
+Set min depth-At least 3 reads at the site in order to keep it
+setMaxDepthInd- We set a max depth for individual we can accept to remove PCR duplicates that is excess. When there are duplicates of a gene. If the reads are stacking up together its not good. 
+Skiptriallelic- We skip sites that have 3 or more alleles
+Genotype likelihood model GL 1 
+doCounts- Counts of allele at each site
+Identify major (most frequent-ancestral allele) and minor allele (rare or derived allel)
+doSaf 1- Generates statistical analysis of alleles
+
 
 
 ```
@@ -762,7 +893,16 @@ myrepo=/users/s/n/snnadi/Ecological-Genomics-2020
 mkdir ${myrepo}/myresults/ANGSD
 output="${myrepo}/myresults/ANGSD"
 mypop="KOS"
-ls /data/project_data/RS_ExomeSeq/mapping/BWA
+ls /data/project_data/RS_ExomeSeq/mapping/BWA/${mypop}_*sorted.rm*.bam >${output} /${mypop}_bam.list
+ll
+cd myresults
+ll
+cd ANGSD/
+ll
+cat KOS_bam.list
+
+```
+
 
 
 
