@@ -61,10 +61,12 @@ ANGSD -b ${output}/${mypop}_bam.list \
 
 realSFS ${output}/${mypop}_folded_allsites.saf.idx \
 -maxIter 1000 -tole 1e-6 -P 1 \
-> ${output]/${mypop}_outfold.sfs
+> ${output}/${mypop}_outFold.sfs
 
 
-# Get refined estimate of the SFS and do Theta
+
+# Get refined estimate of the SFS and doTheta
+
 
 ANGSD -b ${output}/${mypop}_bam.list \
 -ref ${REF} -anc ${REF} \
@@ -86,10 +88,13 @@ ANGSD -b ${output}/${mypop}_bam.list \
 -doMaf 1 \
 -doSaf 1 \
 -fold 1 \
--pest ${output]/${mypop}_outfold.sfs \
--doThetas1
+-pest ${output}/${mypop}_outFold.sfs \
+-doThetas 1
 
 
+# Use the doThetas to estimate nucleotide diversity
+
+thetaStat do_stat ${output}/${mypop}_folded_allsites.thetas.idx 
  
 
 
