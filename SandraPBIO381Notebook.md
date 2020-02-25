@@ -1004,6 +1004,32 @@ ANGSD -b ${output}/${mypop}_bam.list \
 -doMaf 1 \
 -doSaf 1 \
 -fold 1 
+realSFS ${output}/${mypop}_folded_allsites.saf.idx \
+-maxIter 1000 -tole 1e-6 -P 1 \
+> ${output}/${mypop}_outFold.sfs
+ANGSD -b ${output}/${mypop}_bam.list \
+-ref ${REF} -anc ${REF} \
+-out ${output}/${mypop}_folded_allsites \
+-nThreads 1 \
+-remove_bads 1 \
+-C 50 \
+-baq 1 \
+-minMapQ 20 \
+-minQ 20 \
+-setMinDepth 3 \
+-minInd 2 \
+-setMinDepthInd 1 \
+-setMaxDepthInd 17 \
+-skipTriallelic 1 \
+-GL 1 \
+-doCounts 1 \
+-doMajorMinor 1 \
+-doMaf 1 \
+-doSaf 1 \
+-fold 1 \
+-pest ${output}/${mypop}_outFold.sfs \
+-doThetas 1
+thetaStat do_stat ${output}/${mypop}_folded_allsites.thetas.idx
 
 ```
 
@@ -1035,7 +1061,7 @@ div$tPpersite = div$tP/div$numSites
 
 pdf("KOS_diversity_stats.pdf")
 
-# Share you population specific stats with the group
+# Share your population specific stats with the group
 
 
 
