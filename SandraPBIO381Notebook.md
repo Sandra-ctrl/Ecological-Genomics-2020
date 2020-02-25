@@ -839,7 +839,7 @@ ANGSD -b ${output}/${mypop}_bam.list \
 -doMaf 1 \
 -doSaf 1 \
 -doHWE 1 \
-# -SNP_pval 1e-6
+-SNP_pval 1e-6
 
 Baq1- Discounts snps close to  indels
 Min q- individual bases have to have a small prob of being called incorrectly
@@ -863,7 +863,7 @@ samtools flagstat KOS_01.sam
 cd ~/Ecological-Genomics-2020/
 pwd
 /users/s/n/snnadi/Ecological-Genomics-2020
-mypop+"KOS"
+mypop="KOS"
 myrepo="/users/s/n/snnadi/Ecological-Genomics-2020"
 output="/data/project_data/RS_ExomeSeq/mapping"
 echo "num.reads R1 R2 Paired MateMapped Singletons MateMappedDiffChr" > ${myrepo}/myresults/${mypop}.flagstats.txt
@@ -900,13 +900,12 @@ ll
 cd ANGSD/
 ll
 cat KOS_bam.list
+REF="/data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa"
+screen -s ANGSD
+screen -r ANGSD
+exit
 
 ```
-
-
-
-
-
 
 ------    
 <div id='id-section24'/>   
@@ -945,6 +944,101 @@ cat KOS_bam.list
 
 
 ### Entry 28: 2020-02-19, Wednesday.   
+
+# Learning Objectives for 02/19/20
+
+1.	Appreciate the difference between the unfolded and the folded SFS (which should we use?)
+2.	Calculate diversity stats for our focal pops (SFS, Num sites, Frequency of SNPs, theta-W, pi, Tajima’s D)
+3.	Visualize results in R and share to google drive
+4.	Introduce Genome-Wide Association Studies (GWAS) in ANGSD using genotype probabilities
+5.	Do GWAS on seedling heights
+
+The unfolded vs. folded SFS
+The big difference here is whether we are confident in the ancestral state of each variable site (SNP) in our dataset
+If we know the anestral state, then the best info is contained in the unfolded spectrum, which shows the frequency histogram of how many derived loci are rare vs. common
+•	bins in the unfolded spectra go from 0 to 2N – why?
+When you don’t know the ancestral state confidently, you can make the SFS based on the minor allele (the less frequent allele; always < 0.5 in the population).
+•	bins in the folded spectra go from 0 to 1N – why?
+Essentially, the folded spectra wraps the SFS around such that high frequency “derived” alleles are put in the small bins (low minor allele freq).
+
+# Calculate SFS and diversity stats
+In your myscripts folder, let’s revise the script ANGSD_mypop.sh to work on the folded SFS
+The first part will be identical as last time, except: 1. Let’s change the -out name to -out ${output}/${mypop}_outFold 2. Take out the HWE test (not necessary to run again) and replace it with fold 1
+For info on using the folded spectrum, see the ANGSD manual page for Theta stats under “folded”.
+The above command generated the site allele frequencies, which we can now use to estimate the folded SFS for your pop
+realSFS ${output}/${mypop}_outFold.saf.idx -maxIter 1000 -tole 1e-6 -P 1 > ${output}/${mypop}_outFold.sfs
+Once you have the SFS, you can estimate the theta diversity stats:
+We do this by running ANGSD again, as above, but this time we include the -pest flag which uses the SFS we estimated previously as a prior on the allele frequency estimation. We also include the doThetas flag, and of course the fold 1 to tell ANGSD we want the diversities based on the folded SFS
+So, we’re copying our previous set of ANGSD commands to make a new entry and adding:
+-pest ${output}/${mypop}_outFold.sfs \
+-doSaf 1 \
+-doThetas 1 \
+-fold 1
+
+thetaStat do_stat ${output}/${mypop}_outFold.thetas.idx
+The first column of the results file (${mypop}.thetas.idx.pestPG) is formatted a bit funny and we don’t really need it. We can use the cut command to get rid of it if we want to, or just ignore it.
+cut -f2- ${mypop}.thetas.idx.pestPG > ${mypop}.thetas
+
+```
+myrepo=/users/s/n/snnadi/Ecological-Genomics-2020
+output="${myrepo}/myresults/ANGSD"
+mypop="KOS"
+REF="/data/project_data/RS_ExomeSeq/ReferenceGenomes/Pabies1.0-genome_reduced.fa"
+ANGSD -b ${output}/${mypop}_bam.list \
+-ref ${REF} -anc ${REF} \
+-out ${output}/${mypop}_folded_allsites \
+-nThreads 1 \
+-remove_bads 1 \
+-C 50 \
+-baq 1 \
+-minMapQ 20 \
+-minQ 20 \
+-setMinDepth 3 \
+-minInd 2 \
+-setMinDepthInd 1 \
+-setMaxDepthInd 17 \
+-skipTriallelic 1 \
+-GL 1 \
+-doCounts 1 \
+-doMajorMinor 1 \
+-doMaf 1 \
+-doSaf 1 \
+-fold 1 
+
+```
+
+This is now ready to bring into R (transfer via git) to look at the mean per-site nucleotide diversity for your focal population. How does it compare to other populations? Also bring in your SFS for plotting, and to calculate the SNP frequency in your population.
+
+# RSTUDIO SCRIPTS
+
+setwd("~/GitHub/Ecological-Genomics-2020/myresults")
+list.files()
+
+SFS <- scan("KOS_outFold.sfs")
+
+sumSFS <- sum(SFS)
+
+sumSFS
+
+pctPoly = 100*(1-(SFS[1]/sumSFS))
+
+plotSFS <- SFS[-c(1,length(SFS))]
+
+barplot(plotSFS)
+
+div <-read.table("KOS_folded_allsites.thetas.idx.pestPG")
+
+colnames(div) =c("window","chrname","winscenter","tW","tP","tF","tH","tL","tajD","fulif","fuliD","fayH","zengsE","numSites")
+
+div$tWpersite = div$tW/div$numSites
+div$tPpersite = div$tP/div$numSites
+
+pdf("KOS_diversity_stats.pdf")
+
+# Share you population specific stats with the group
+
+
+
 
 
 
