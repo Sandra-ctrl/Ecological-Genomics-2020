@@ -1626,7 +1626,122 @@ pheatmap(mat, annotation_col=df)
 * Explore the various results for a given experimental design, see: resultsNames(dds)
 * Set up your DESeq object with different experimental designs; e.g., design = ~ climate + treatment + climate:treatment
 * Subset your data to exclude/include different factors, run different designs; select and subset are handy functions in R for          subsetting your countsMatrix or conds table, e.g., use only the day 10 data.
-* Let’s collate and summarize our results in a common table.
+
+# Analysis of DAY 10 samples
+
+```
+countsTable <- read.table("RS_cds2kb_countsMatrix.txt", header=TRUE, row.names=1)
+head(countsTable)
+dim(countsTable)
+countsTableRound <- round(countsTable)
+head(countsTableRound)
+conds <- read.delim("RS_samples.txt", header=TRUE, stringsAsFactors = TRUE, row.names=1, colClasses=c('factor', 'factor', 'factor', 'factor'))
+head(conds)
+dim(conds)
+
+grep("10", names(countsTableRound), value = TRUE)
+day10countstable <- subset(countsTableRound, grep("10", names(countsTableRound), value = TRUE)) #doesn't work has to be logical
+
+day10countstable <- countsTableRound %>% select(contains("10"))
+dim(day10countstable)
+
+conds10<- subset(conds, day=="10")
+dim(conds10)
+head(conds10)
+
+colSums(day10countstable)
+mean(colSums(day10countstable))
+barplot(colSums(day10countstable), las=3, cex.names=0.5,names.arg = substring(colnames(day10countstable),1,13))
+abline(h=mean(colSums(day10countstable)), col="blue", lwd =2)
+
+rowSums(day10countstable)
+mean(rowSums(day10countstable))
+median(rowSums(day10countstable))
+
+apply(day10countstable,2,mean)
+
+dds <- DESeqDataSetFromMatrix(countData = day10countstable, colData = conds10, 
+                              design = ~ climate + treatment + climate:treatment)
+dim(dds)
+
+dds <- dds[rowSums(counts(dds)) > 30]
+dim(dds)
+
+dds <- DESeq(dds)
+
+resultsNames(dds)
+
+res_treatCD <- results(dds, name="treatment_D_vs_C", alpha=0.05)
+res_treatCD <- res_treatCD[order(res_treatCD$padj),]
+head(res_treatCD)
+summary(res_treatCD)
+plotMA(res_treatCD,ylim=c(-3,3))
+
+res_treatCH <- results(dds, name="treatment_H_vs_C", alpha = 0.05)
+res_treatCH <- res_treatCH[order(res_treatCH$padj),]
+head(res_treatCH)
+summary(res_treatCH)
+plotMA(res_treatCH,ylim=c(-3,3))
+
+res_interClimTreat <- results(dds, name="climateHD.treatmentD", alpha=0.05)
+res_interClimTreat <- res_interClimTreat[order(res_interClimTreat$padj),]
+head(res_interClimTreat)
+summary(res_interClimTreat)
+plotMA(res_interClimTreat,ylim=c(-3,3))
+
+res_interClimTreatH <- results(dds, name="climateHD.treatmentH", alpha=0.05)
+res_interClimTreatH <- res_interClimTreatH[order(res_interClimTreatH$padj),]
+head(res_interClimTreatH)
+summary(res_interClimTreatH)
+plotMA(res_interClimTreatH,ylim=c(-3,3))
+
+res_ClimTreat <- results(dds, name="climate_HD_vs_CW", alpha=0.05)
+res_ClimTreat <- res_ClimTreat[order(res_ClimTreat$padj),]
+head(res_ClimTreat)
+summary(res_ClimTreat)
+plotMA(res_ClimTreat,ylim=c(-3,3))
+
+res_Int <- results(dds, name="intercept", alpha = 0.05)
+res_Int <- res_Int[order(res_Int$padj),]
+head(res_Int)
+summary(res_Int)
+plotMA(res_Int,ylim=c(-3,3))
+
+vsd <- vst(dds, blind=FALSE)
+
+data <- plotPCA(vsd,intgroup=c("climate","treatment"),returnData=TRUE)
+percentVar <- round(100 * attr(data, "percentVar"))
+
+data$treatment <- factor(data$treatment, levels=c("C","H","D"), labels = c("Control","Hot","Dry+Hot"))
+data$climate <- factor(data$climate, levels=c("HD","CW"), labels = c("Hot-Dry","Cold-Wet"))
+
+ggplot(data, aes(PC1, PC2, color=climate, shape=treatment)) +
+  geom_point(size=4, alpha=0.85) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) +
+  theme_minimal()
+
+d <-plotCounts(dds, gene="MA_133272g0010", intgroup = (c("treatment","climate")), returnData=TRUE)
+d
+
+p <-ggplot(d, aes(x=treatment, y=count, color=climate)) + 
+  theme_minimal() + theme(text = element_text(size=20), panel.grid.major=element_line(colour="grey"))
+p <- p + geom_point(position=position_jitter(w=0.3,h=0), size=3) +
+  scale_x_discrete(limits=c("C","H","D"))
+p
+
+p <-ggplot(d, aes(x=treatment, y=count, shape=climate)) + 
+  theme_minimal() + theme(text = element_text(size=20), panel.grid.major=element_line(colour="grey"))
+p
+
+library(pheatmap)
+topgenes <- head(rownames(res_treatCD),20)
+mat <- assay(vsd)[topgenes,]
+mat <- mat - rowMeans(mat)
+df <- as.data.frame(colData(dds)[,c("treatment","climate")])
+pheatmap(mat, annotation_col=df)
+
+```
 
 # Export data to perform additional analyses
 You can use the normalized counts data or the results p-values from your tests of interest for a number of downstream analyses such as functional enrichment or correlation network analyses. Below is some example code for exporting your data for various purposes:
