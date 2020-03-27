@@ -1304,7 +1304,7 @@ git push
 
 ### Entry 38: 2020-03-04, Wednesday.   
 
-# Learning by Doing Objectives for 3/4/20
+# Learning Objectives for 3/4/20
 * You should have installed the relevant programs in R.
 * Map cleaned reads and quantify abundance simultaneously using Salmon.
 * Assess mapping rate (Salmon log files); explore mapping to different reference trancript sets.
@@ -1508,7 +1508,7 @@ countsTableRound <- round(countsTable) * Need to round because DESeq wants only 
 head(countsTableRound)
 
 # Import the samples description table - links each sample to factors of the experimental design.
-* Need the colClasses otherwise imports "day" as numeric which DESeq doesn't like, coula altneratively change to d0, d5, d10
+* Need the colClasses otherwise imports "day" as numeric which DESeq doesn't like, could alternatively change to d0, d5, d10
 conds <- read.delim("RS_samples.txt", header=TRUE, stringsAsFactors = TRUE, row.names=1, colClasses=c('factor', 'factor', 'factor', 'factor'))
 head(conds)
 dim(conds)
