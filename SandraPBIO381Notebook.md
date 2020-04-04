@@ -1808,6 +1808,122 @@ write.csv(res_treatCD_negpval, file="DGE_treatCvD_neglogpval.csv", row.names=F,q
 
 ### Entry 53: 2020-03-25, Wednesday.   
 
+# EPIGENETICS -SPECIAL TOPIC
+Learning objectives
+* Background on the copepod selection experimental design
+* Think about the hypotheses we can address with this experiment
+* Cover how bisulfite sequencing data differs from regular data and not to panic when you see your fastqc output
+* Begin mapping using Bismark
+
+# Copepod selection experiment (The copepod, Acartia tonsa)
+Acartia tonsa is a calanoid copepod that has a world wide distribution. It inhabits estuaries and coastal waters and it typically the most abundant zooplankton present. Because of their huge population sizes and global distribution, they play an important role in ocean biogeochemical cycling and ecosystem functioning. For example, they’re an important food base for many fishes. Given their broad distribution in dynamic habitats (estuaries), they can tolerate and live in a broad range of salinities, freshwater to seawater, and temperatures, among other stressors.
+
+We know that the world is rapidly changing due to human activities and it is important to understand how species will respond to these changes. We were interested in understanding how A. tonsa could respond to stressful environments that will likely be caused by climate change. Can they adapt to rapid changes in temperature and acidity? How might epigenetic responses interact with adaptation to enable resilience?
+
+A. tonsa is a great system to ask these questions for a number of reasons. First, their generation time is only ~10-20 days and they’re tiny! Only 1-2 mm. This means we can easily execute multi-generational studies with thousands of individuals. Second, because they can tolerate such variable environments, they should have lots of plasticity to respond to environmental fluctuations. Finally, their large population sizes mean that genetic diversity should be high, giving them high adaptive potential. This means that if any species can respond to rapid environmental change, it is likely A. tonsa.
+
+# Experimental design
+A. tonsa was collected from the wild, common gardened them for three generations, then split them into four treatments with four replicates each and about 3,000-5,000 individuals per replicate. there were left to evolve in these conditions for 25 generations.
+
+Samples were collected at generation F0 and F25 to quantify methylation frequencies using reduced representation bisulfite sequencing (RRBS). The treatments were; * Control: ambient temp, ambient CO2 (AA) * ambient temp, high CO2 (AH) * high temp, ambient CO2 (HA) * high temp, high CO2 (HH).
+
+# RRBS 
+Following the adapter ligation, we bisulfite convert all unmethylated C’s to T’s.
+
+Before starting we also spiked in a small amount of DNA from E. coli that we know wasn’t methylated. Using this, we can calculate downstream how efficient our bisulfite conversion was.
+
+# Hypotheses and questions
+
+## pipeline
+# Visualize, clean, visualize (this step was already done)
+* Visualize quality of raw data with fastqc
+* clean raw data with Trimmomatic
+* Visualize quality of cleaned data with fastqc
+# Align to Acartia tonsa reference genome (Bismark)
+* also align lambda DNA to check for conversion efficiency (Done for you)
+# Extract methylation calls
+# Process and filter calls
+# Summary figures (PCA, clustering, etc)
+# Test for differential methylation (Methylkit)
+
+Take a look at the fastqc files before and after trimming and realized that 
+What do you notice that is different from fastqc that you’ve seen previously?
+
+Why do we see these differences? - bisulfite conversion! And don’t forget that the reverse strand is the reverse complement of the bisulfite converted forward strand, and is not just the BS converted bottom strand.
+
+# Align with Bismark
+Why is this different from typical DNA alignment?
+
+What do we need to do to the genome?
+
+Now you want to run your assigned sample.
+Remember, this is going to take at least 8 hours to run, so you’ll want to execute it in a screen.
+
+```
+#!/bin/bash
+
+bismark --bowtie2 --multicore 1 \
+    --genome /data/project_data/epigenetics/reference_genome \
+    --output_dir /data/project_data/epigenetics/aligned_output \
+    -1 /data/project_data/epigenetics/trimmed_fastq/SAMPLEID_1.fq.gz \
+    -2 /data/project_data/epigenetics/trimmed_fastq/SAMPLEID_2.fq.gz \
+    --rg_tag --rg_id SAMPLEID --rg_sample SAMPLEID --gzip --local --maxins 1000
+ ```
+ All you need to modify is the SAMPLEID information. For example, if your sample is HH_F25_3, then the forward read line would be: -1 /data/project_data/epigenetics/trimmed_fastq/HH_F25_3_1.fq.gz. And so on.
+
+Bismark is, at its core, running bowtie2. But there are important differences. If you remember, we’re using two modified versions of the genome where we’ve converted C-to-T AND G-to-A. We also generate temporary files of our trimmed reads where we convert C-to-T (read1) AND G-to-A (read2) so they can map to this converted genome. This makes the alignment a bit harder because 1. the complexity of DNA is reduced, and 2. we are mapping to two separate genomes.
+
+The parameters in our bismark aligment above specify the following:
+
+--bowtie2 tells bismark to map with bowtie2. There are other options possible here (bowtie1, for example)
+--multicore 1 Use one core. We could use multiple cores to make alignment faster, but we may crash the server if many of you are mapping at once if we do this.
+--genome the location of our converted genome. The bismark package has a command to prep your genome that I've already done. You can check it out: bismark_methylation_extractor --help
+-1 the path to your sample's forward read
+-2 the path to your sample's reverse read
+--rg_tag add a read group tag that identifies your individual sample in your output bam file
+--rg_id the string that defines the readgroup ID
+--rg_sample the string that defines your readgroup sample ID
+--gzip for the temporary files, use gzip to save space
+--local align with the local alignment option in bowtie2. This will include soft clipping, which should increase mapping rate, but comes at the cost of (maybe) increasing mis-mapping. 
+--maxins specifies the maximum insert size for mapping. We're using 1000 as our libraries had a mean insert size of ~200. Note that this is smaller than most sequencing libraries.
+
+Don’t forget to make your code executable chmod -u +x
+
+When your job is done running. There should be 3 files output for your samples:
+
+SAMPLEID_bismark_bt2_pe.bam the actual alignment
+SAMPLEID_bismark_bt2_PE_report.txt text report of the alignment. Mapping success, etc.
+SAMPLEID_bismark_bt2_PE_report.html html report of the alignment. You can download (with scp, etc) this and view in browser. It is pretty nice and nifty. Redundant info from the text file, but nicer to look at.
+
+# Aligining Sample AA_F25_4 with Bismark
+
+```
+cd Ecological-Genomics-2020
+cd myscripts
+touch bismark.sh
+vim bismark.sh
+i
+
+#!/bin/bash
+
+bismark --bowtie2 --multicore 1 \
+    --genome /data/project_data/epigenetics/reference_genome \
+    --output_dir /data/project_data/epigenetics/aligned_output \
+    -1 /data/project_data/epigenetics/trimmed_fastq/AA_F25_4_1.fq.gz \
+    -2 /data/project_data/epigenetics/trimmed_fastq/AA_F25_4_2.fq.gz \
+    --rg_tag --rg_id AA_F25_4 --rg_sample AA_F25_4 --gzip --local --maxins 1000
+
+escape
+:wq
+enter
+
+chmod u+x bismark.sh
+ll
+screen
+bash bismark.sh
+
+```
+
 
 
 ------    
