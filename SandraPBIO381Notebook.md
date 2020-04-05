@@ -1834,19 +1834,19 @@ Before starting we also spiked in a small amount of DNA from E. coli that we kno
 
 # Hypotheses and questions
 
-## pipeline
-# Visualize, clean, visualize (this step was already done)
+# pipeline
+## Visualize, clean, visualize (this step was already done)
 * Visualize quality of raw data with fastqc
 * clean raw data with Trimmomatic
 * Visualize quality of cleaned data with fastqc
-# Align to Acartia tonsa reference genome (Bismark)
+## Align to Acartia tonsa reference genome (Bismark)
 * also align lambda DNA to check for conversion efficiency (Done for you)
-# Extract methylation calls
-# Process and filter calls
-# Summary figures (PCA, clustering, etc)
-# Test for differential methylation (Methylkit)
+## Extract methylation calls
+## Process and filter calls
+## Summary figures (PCA, clustering, etc)
+## Test for differential methylation (Methylkit)
 
-Take a look at the fastqc files before and after trimming and realized that 
+Take a look at the fastqc files before and after trimming
 What do you notice that is different from fastqc that you’ve seen previously?
 
 Why do we see these differences? - bisulfite conversion! And don’t forget that the reverse strand is the reverse complement of the bisulfite converted forward strand, and is not just the BS converted bottom strand.
@@ -1964,6 +1964,300 @@ bash bismark.sh
 
 ### Entry 58: 2020-04-01, Wednesday.   
 
+# LEARNING OBJECTIVES
+* Extract methylation calls and assess raw data
+* Visualize genome-wide patterns
+* Identify differential methylation at the SNP level
+
+# Extract methylation calls
+
+Now extract methylation calls
+
+bismark_methylation_extractor --bedGraph --scaffolds --gzip \
+    --cytosine_report --comprehensive \
+    --no_header \
+    --parallel 6 \
+    --output ~/tonsa_epigenetics/analysis/methylation_extract/ \
+    --genome_folder /data/copepods/tonsa_genome/ \
+    *pe.bam
+    
+Link to methylation extraction report
+
+To ignore first two bases:
+
+bismark_methylation_extractor --bedGraph --scaffolds --gzip \
+    --cytosine_report --comprehensive \
+    --no_header \
+    --parallel 6 \
+    --ignore 2 --ignore_r2 2 \
+    --output ~/tonsa_epigenetics/analysis/methylation_extract/ \
+    --genome_folder /data/copepods/tonsa_genome/ \
+    *pe.bam
+    
+Link to methylation extraction report ignoring bias
+
+* Column 1: Chromosome
+* Column 2: Start position
+* Column 3: End position
+* Column 4: Methylation percentage
+* Column 5: Number of methylated C's
+* Column 6: Number of unmethylated C's
+We can look at sites with some data using the following:
+
+```
+zcat HH_F25_4_1_bismark_bt2_pe.bismark.cov.gz | awk '$4 > 5 && $5 > 10' | head
+```
+
+# Analyze with methylkit
+library(methylKit)
+library(tidyverse)
+library(ggplot2)
+library(pheatmap)
+
+# first, we want to read in the raw methylation calls with methylkit
+
+# set directory with absolute path 
+dir <- "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020"
+
+# read in the sample ids
+samples <- read.table("~/Documents/GitHub/Ecological-Genomics-2020/sample_id.txt", header=FALSE)
+
+# now point to coverage files
+files <- file.path(dir, samples$V1)
+all(file.exists(files)) # checking that all files exist
+
+# convert to list
+file.list <- as.list(files)
+
+# get the names only for naming our samples
+nmlist <- as.list(gsub("_1_bismark_bt2_pe.bismark.cov.gz","",samples$V1))
+
+# use methRead to read in the coverage files
+
+```
+myobj <- methRead(location= file.list,
+        sample.id =   nmlist,
+                      assembly = "atonsa", # this is just a string. no actual database
+                      dbtype = "tabix",
+                      context = "CpG",
+                      resolution = "base",
+                      mincov = 20,
+                            treatment = 
+                              c(0,0,0,0,
+                                1,1,1,1,
+                                2,2,2,2,
+                                3,3,3,3,
+                                4,4,4,4),
+                      pipeline = "bismarkCoverage",
+                      dbdir = "~/Documents/GitHub/Ecological-Genomics-2020")
+```
+# Visualize coverage and filter
+
+## We can look at the coverage for individual samples with getCoverageStats()
+getCoverageStats(myobj[[1]], plot = TRUE, both.strands = FALSE) 
+* Get CpG coverage information
+
+## Also plot all of our samples at once to compare.
+
+par(mfrow=c(5,4))
+
+for(i in 1:length(myobj)) 
+{  getCoverageStats(myobj[[i]], plot = TRUE, both.strands = FALSE) 
+  * Get CpG coverage information} 
+## Plot and save %CpG methylation information
+
+
+# filter samples by depth with filterByCoverage()
+filtered.myobj=filterByCoverage(myobj,lo.count=20,lo.perc=NULL,
+                                      hi.count=NULL,hi.perc=97.5,
+                                      db.dir = "~/Documents/GitHub/Ecological-Genomics-2020")
+# merge samples
+(Note! This takes a while and we're skipping it)
+
+# use unite() to merge all the samples. We will require sites to be present in each sample or else will drop it
+
+meth <- unite(filtered.myobj,mc.cores=3, suffix="united",
+              db.dir = "~/Documents/UVM/Ecological_genomics_teaching/data/")
+  * this requires a site to be present in all samples. This could be relaxed, depending on the application, with the min.per.group option.
+  
+# loading from databases
+Methylkit has a convenient aspect where we can load previously generated databases. This means we don’t have to re-run analyses, but can skip ahead to where we previously left off. We will do this below to load the united database that I’ve already generated.
+ 
+```
+meth <- methylKit:::readMethylBaseDB(
+                      dbpath = "~/Documents/UVM/Ecological_genomics_teaching/data/methylBase_united.txt.bgz",
+                            dbtype = "tabix",
+                            sample.id =   unlist(nmlist),
+                            assembly = "atonsa", # this is just a string. no actual database
+                            context = "CpG",
+                            resolution = "base",
+                            treatment = c(0,0,0,0,
+                              1,1,1,1,
+                              2,2,2,2,
+                              3,3,3,3,
+                              4,4,4,4),
+                            destrand = FALSE)
+```
+# Methylation statistics across samples
+## percMethylation() calculates the percent methylation for each site and sample
+
+```
+pm <- percMethylation(meth) # get percent methylation matrix
+
+ggplot(gather(as.data.frame(pm)), aes(value)) + 
+    geom_histogram(bins = 10, color="black", fill="grey") + 
+    facet_wrap(~key) # can add  scales = 'free_x'
+
+sp.means <- colMeans(pm)
+p.df <- data.frame(sample=names(sp.means),
+          group = substr(names(sp.means), 1,6),
+          methylation = sp.means)
+
+ggplot(p.df, aes(x=group, y=methylation, color=group)) + 
+    stat_summary(color="black") + geom_jitter(width=0.1, size=3) 
+
+```
+# Summarize variation: PCA, clustering
+```
+clusterSamples(meth, dist="correlation", method="ward.D", plot=TRUE)
+
+PCASamples(meth, screeplot=TRUE)
+PCASamples(meth, screeplot=FALSE)
+```
+find differentially methylated sites between two groups
+
+# subset with reorganize()
+
+```
+meth_sub <- reorganize(meth,  sample.ids= (c("AA_F00_1","AA_F00_2","AA_F00_3", "AA_F00_4",
+                                          "HH_F25_1","HH_F25_2","HH_F25_3","HH_F25_4")), 
+                              treatment=c(0,0,0,0,1,1,1,1),
+                             save.db=FALSE)
+```
+                             
+# calculate differential methylation
+
+```
+myDiff=calculateDiffMeth(meth_sub,
+            overdispersion="MN",
+            mc.cores=1,
+            suffix = "AA_HH", adjust="qvalue",test="Chisq")
+```
+
+            
+* where MN corrects for overdispersion
+* fit a logistic regression to methylation values where explanatory variable is the treatment (case or control). 
+* and we compare the fit of the model with explanatory variable vs the null model (no explanatory variable) 
+and ask if the fit is better using a Chisq test. 
+* the methylation proportions are weighted by their coverage, as in a typical logistic regression. Note that in theory you could enter these as two column success and failure data frame, which is common in logistic regressions.
+
+* use overdispersion: Chisq without overdispersion finds more true positives, but many more false positives. good compromise is overdispersion with Chisq. reduced true pos, but really reduces false pos rate.
+
+## get all differentially methylated bases
+myDiff=getMethylDiff(myDiff,difference=10,qvalue=0.05)
+
+## we can visualize the changes in methylation frequencies quickly.
+hist(getData(myDiff)$meth.diff)
+
+## get hyper methylated bases
+hyper=getMethylDiff(myDiff,difference=10,qvalue=0.05,type="hyper")
+
+## get hypo methylated bases
+hypo=getMethylDiff(myDiff,difference=10,qvalue=0.05,type="hypo") 
+
+# Plots of differentially methylated groups
+* heatmaps first
+
+## get percent methylation matrix
+pm <- percMethylation(meth_sub)
+
+## make a dataframe with snp id's, methylation, etc.
+sig.in <- as.numeric(row.names(myDiff))
+pm.sig <- pm[sig.in,]
+
+## add snp, chr, start, stop
+
+```
+din <- getData(myDiff)[,1:3]
+df.out <- cbind(paste(getData(myDiff)$chr, getData(myDiff)$start, sep=":"), din, pm.sig)
+colnames(df.out) <- c("snp", colnames(din), colnames(df.out[5:ncol(df.out)]))
+df.out <- (cbind(df.out,getData(myDiff)[,5:7]))
+```
+
+# heatmap
+
+```
+my_heatmap <- pheatmap(pm.sig,
+        show_rownames = FALSE)
+
+ctrmean <- rowMeans(pm.sig[,1:4])
+
+h.norm <- (pm.sig-ctrmean)
+
+my_heatmap <- pheatmap(h.norm,
+        show_rownames = FALSE)
+```
+
+##### if you want to change colors. 
+
+```
+paletteLength <- 50
+myColor <- colorRampPalette(c("cyan1", "black", "yellow1"))(paletteLength)
+myBreaks <- c(seq(min(h.norm), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(h.norm)/paletteLength, max(h.norm), length.out=floor(paletteLength/2)))
+              
+my_heatmap <- pheatmap(h.norm,
+        color=myColor, 
+        breaks=myBreaks,
+        show_rownames = FALSE)
+```
+
+# let's look at methylation of specific gene or snp
+
+```
+df.out
+df.plot <- df.out[,c(1,5:12)] %>% pivot_longer(-snp, values_to = "methylation")
+df.plot$group <- substr(df.plot$name,1,2)
+head(df.plot)
+```
+
+## looking at snp LS049205.1:248
+* if you choose a different snp, you can create different plots.
+```
+df.plot %>% filter(snp=="LS049205.1:248") %>% 
+            ggplot(., aes(x=group, y=methylation, color=group, fill=group)) +
+              stat_summary(fun.data = "mean_se", size = 2) +
+              geom_jitter(width = 0.1, size=3, pch=21, color="black")
+```
+
+## write bed file for intersection with genome annotation
+
+```
+write.table(file = "~/Documents/UVM/Ecological_genomics_teaching/diffmeth.bed",
+          data.frame(chr= df.out$chr, start = df.out$start, end = df.out$end),
+          row.names=FALSE, col.names=FALSE, quote=FALSE, sep="\t")
+```
+
+# link to genes
+in bash, on server.
+
+```
+/data/popgen/bedtools2/bin/bedtools closest -a diffmeth.bed \
+      -b /data/project_data/epigenetics/GCA_900241095.1_Aton1.0_genomic.fa_annotation_table.bed \
+      -D b | \
+      awk '!($10=="-")' > hits.bed 
+```
+
+* the annotation file here has the format: ScaffoldName  FromPosition  ToPosition  Sense TranscriptName  TranscriptPath  GeneAccession GeneName  GeneAltNames  GenePfam  GeneGo  CellularComponent MolecularFunction BiologicalProcess
+
+* note that the hits.bed file will paste the diffmeth.bed file before the annotation table. So the first 3 columns are fom diffmeth.bed, then next 8 from the annotation table.
+
+## count up number of hits
+
+cat hits.bed | wc -l
+
+## count number of unique named genes
+cat hits.bed | cut -f 8 | sort | uniq -c
 
 
 ------    
