@@ -2059,7 +2059,7 @@ getCoverageStats(myobj[[1]], plot = TRUE, both.strands = FALSE)
 
 ## Also plot all of our samples at once to compare.
 
-par(mfrow=c(5,4))
+par(mfrow=c(1,1))
 
 for(i in 1:length(myobj)) 
 {  getCoverageStats(myobj[[i]], plot = TRUE, both.strands = FALSE) 
@@ -2259,6 +2259,188 @@ cat hits.bed | wc -l
 ## count number of unique named genes
 cat hits.bed | cut -f 8 | sort | uniq -c
 
+## R Scripts for Assignment with treaments AA_F25 vs HA_F25 and AA_F25 vs HH_F25
+
+```
+library(methylKit)
+library(tidyverse)
+library(ggplot2)
+library(pheatmap)
+
+getwd() 
+dir <- "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Epigenetics_data"
+samples <- read.table("~/Github/Ecological-Genomics-2020/Epigenetics_data/sample_id.txt", header=FALSE)
+files <- file.path(dir, samples$V1)
+all(file.exists(files))
+file.list <- as.list(files)
+nmlist <- as.list(gsub("_1_bismark_bt2_pe.bismark.cov.gz","",samples$V1))
+myobj <- methRead(location = file.list,
+                  sample.id =   nmlist,
+                  assembly = "atonsa",
+                  dbtype = "tabix",
+                  context = "CpG",
+                  resolution = "base",
+                  mincov = 20,
+                  treatment = 
+                    c(0,0,0,0,
+                      1,1,1,1,
+                      2,2,2,2,
+                      3,3,3,3,
+                      4,4,4,4),
+                  pipeline = "bismarkCoverage",
+                  dbdir = "~/Documents/GitHub/Ecological-Genomics-2020/Epigenetics_data")
+getCoverageStats(myobj[[1]], plot = TRUE, both.strands = FALSE)
+par(mfrow=c(1,1))
+
+meth <- methylKit:::readMethylBaseDB(
+  dbpath = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Epigenetics_data/methylBase_united.txt.bgz",
+  dbtype = "tabix",
+  sample.id =   unlist(nmlist),
+  assembly = "atonsa", 
+  context = "CpG",
+  resolution = "base",
+  treatment = c(0,0,0,0,
+                1,1,1,1,
+                2,2,2,2,
+                3,3,3,3,
+                4,4,4,4),
+  destrand = FALSE)
+meth
+pm <- percMethylation(meth)
+ggplot(gather(as.data.frame(pm)), aes(value)) + 
+  geom_histogram(bins = 10, color="black", fill="grey") + 
+  facet_wrap(~key)
+
+sp.means <- colMeans(pm)
+dim(pm)
+p.df <- data.frame(sample=names(sp.means),
+                   group = substr(names(sp.means), 1,6),
+                   methylation = sp.means)
+
+ggplot(p.df, aes(x=group, y=methylation, color=group)) + 
+  stat_summary(color="black") + geom_jitter(width=0.1, size=3) 
+
+clusterSamples(meth, dist="correlation", method="ward.D", plot=TRUE)
+
+PCASamples(meth, screeplot=TRUE)
+PCASamples(meth, screeplot=FALSE)
+```
+
+# subset with AA_F25 and HA_F25
+```
+meth_sub <- reorganize(meth,  sample.ids= (c("AA_F25_1","AA_F25_2","AA_F25_3", "AA_F25_4",
+                                             "HA_F25_1","HA_F25_2","HA_F25_3","HA_F25_4")), 
+                       treatment=c(0,0,0,0,1,1,1,1),
+                       save.db=FALSE)
+
+myDiff=calculateDiffMeth(meth_sub,
+                         overdispersion="MN",
+                         mc.cores=1,
+                         suffix = "AA_HA", adjust="qvalue",test="Chisq")
+myDiff
+
+myDiff <-getMethylDiff(myDiff,difference=10,qvalue=0.05)
+myDiff
+
+hist(getData(myDiff)$meth.diff)
+
+hyper=getMethylDiff(myDiff,difference=10,qvalue=0.05,type="hyper")
+
+hypo=getMethylDiff(myDiff,difference=10,qvalue=0.05,type="hypo")
+
+pm <- percMethylation(meth_sub)
+
+sig.in <- as.numeric(row.names(myDiff))
+pm.sig <- pm[sig.in,]
+
+din <- getData(myDiff)[,1:3]
+df.out <- cbind(paste(getData(myDiff)$chr, getData(myDiff)$start, sep=":"), din, pm.sig)
+colnames(df.out) <- c("snp", colnames(din), colnames(df.out[5:ncol(df.out)]))
+df.out <- (cbind(df.out,getData(myDiff)[,5:7]))
+
+my_heatmap <- pheatmap(pm.sig,
+                       show_rownames = FALSE)
+ctrmean <- rowMeans(pm.sig[,1:4])
+
+h.norm <- (pm.sig-ctrmean)
+
+my_heatmap <- pheatmap(h.norm,
+                       show_rownames = FALSE)
+
+df.out
+df.plot <- df.out[,c(1,5:12)] %>% pivot_longer(-snp, values_to = "methylation")
+df.plot$group <- substr(df.plot$name,1,2)
+head(df.plot)
+
+df.plot %>% filter(snp=="LS043685.1:10221") %>% 
+  ggplot(., aes(x=group, y=methylation, color=group, fill=group)) +
+  stat_summary(fun.data = "mean_se", size = 2) +
+  geom_jitter(width = 0.1, size=3, pch=21, color="black")
+
+## write bed file for intersection with genome annotation
+
+write.table(file = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Epigenetics_data/diffmeth.bed",
+            data.frame(chr= df.out$chr, start = df.out$start, end = df.out$end),
+            row.names=FALSE, col.names=FALSE, quote=FALSE, sep="\t")
+```
+
+# subset with AA_F25 and HH_F25
+```
+meth_sub <- reorganize(meth,  sample.ids= (c("AA_F25_1","AA_F25_2","AA_F25_3", "AA_F25_4",
+                                             "HH_F25_1","HH_F25_2","HH_F25_3","HH_F25_4")), 
+                       treatment=c(0,0,0,0,1,1,1,1),
+                       save.db=FALSE)
+
+myDiff=calculateDiffMeth(meth_sub,
+                         overdispersion="MN",
+                         mc.cores=1,
+                         suffix = "AA_HA", adjust="qvalue",test="Chisq")
+myDiff
+
+myDiff <-getMethylDiff(myDiff,difference=10,qvalue=0.05)
+myDiff
+
+hist(getData(myDiff)$meth.diff)
+
+hyper=getMethylDiff(myDiff,difference=10,qvalue=0.05,type="hyper")
+
+hypo=getMethylDiff(myDiff,difference=10,qvalue=0.05,type="hypo")
+
+pm <- percMethylation(meth_sub)
+
+sig.in <- as.numeric(row.names(myDiff))
+pm.sig <- pm[sig.in,]
+
+din <- getData(myDiff)[,1:3]
+df.out <- cbind(paste(getData(myDiff)$chr, getData(myDiff)$start, sep=":"), din, pm.sig)
+colnames(df.out) <- c("snp", colnames(din), colnames(df.out[5:ncol(df.out)]))
+df.out <- (cbind(df.out,getData(myDiff)[,5:7]))
+
+my_heatmap <- pheatmap(pm.sig,
+                       show_rownames = FALSE)
+ctrmean <- rowMeans(pm.sig[,1:4])
+
+h.norm <- (pm.sig-ctrmean)
+
+my_heatmap <- pheatmap(h.norm,
+                       show_rownames = FALSE)
+
+df.out
+df.plot <- df.out[,c(1,5:12)] %>% pivot_longer(-snp, values_to = "methylation")
+df.plot$group <- substr(df.plot$name,1,2)
+head(df.plot)
+
+df.plot %>% filter(snp=="LS070286.1:6277") %>% 
+  ggplot(., aes(x=group, y=methylation, color=group, fill=group)) +
+  stat_summary(fun.data = "mean_se", size = 2) +
+  geom_jitter(width = 0.1, size=3, pch=21, color="black")
+
+## write bed file for intersection with genome annotation
+
+write.table(file = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Epigenetics_data/diffmeth.bed",
+            data.frame(chr= df.out$chr, start = df.out$start, end = df.out$end),
+            row.names=FALSE, col.names=FALSE, quote=FALSE, sep="\t")
+```
 
 ------    
 <div id='id-section59'/>   
