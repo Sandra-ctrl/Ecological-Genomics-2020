@@ -81,7 +81,7 @@ PCASamples(meth, screeplot=FALSE)
 # subset with reorganize()
 
 meth_sub <- reorganize(meth,  sample.ids= (c("AA_F25_1","AA_F25_2","AA_F25_3", "AA_F25_4",
-                                             "HH_F25_1","HH_F25_2","HH_F25_3","HH_F25_4")), 
+                                             "HA_F25_1","HA_F25_2","HA_F25_3","HA_F25_4")), 
                        treatment=c(0,0,0,0,1,1,1,1),
                        save.db=FALSE)
 
@@ -90,7 +90,7 @@ meth_sub <- reorganize(meth,  sample.ids= (c("AA_F25_1","AA_F25_2","AA_F25_3", "
 myDiff=calculateDiffMeth(meth_sub,
                          overdispersion="MN",
                          mc.cores=1,
-                         suffix = "AA_HH", adjust="qvalue",test="Chisq")
+                         suffix = "AA_HA", adjust="qvalue",test="Chisq")
 myDiff
 
 # where MN corrects for overdispersion
@@ -168,7 +168,7 @@ head(df.plot)
 # looking at snp LS049205.1:248
 # if you choose a different snp, you can create different plots.
 
-df.plot %>% filter(snp=="LS042748.1:7742") %>% 
+df.plot %>% filter(snp=="LS043685.1:10221") %>% 
   ggplot(., aes(x=group, y=methylation, color=group, fill=group)) +
   stat_summary(fun.data = "mean_se", size = 2) +
   geom_jitter(width = 0.1, size=3, pch=21, color="black")
@@ -178,3 +178,14 @@ df.plot %>% filter(snp=="LS042748.1:7742") %>%
 write.table(file = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Epigenetics_data/diffmeth.bed",
             data.frame(chr= df.out$chr, start = df.out$start, end = df.out$end),
             row.names=FALSE, col.names=FALSE, quote=FALSE, sep="\t")
+write.table(file = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Epigenetics_data/diffmeth2.bed",
+            data.frame(chr= df.out$chr, start = df.out$start, end = df.out$end),
+            row.names=FALSE, col.names=FALSE, quote=FALSE, sep="\t")
+
+AA_HA_unique_hits <- read.csv("C:\\Users\\sandr\\OneDrive\\Documents\\GitHub\\Ecological-Genomics-2020\\Epigenetics_data\\uniqueHits2.txt", sep="\t", header = FALSE)
+
+# only unique
+View(AA_HA_unique_hits[unique(AA_HA_unique_hits$V10),c(1,10:13,16:18)])
+
+AA_HH_unique_hits <- read.csv("C:\\Users\\sandr\\OneDrive\\Documents\\GitHub\\Ecological-Genomics-2020\\Epigenetics_data\\uniqueHits.txt", sep="\t", header = FALSE)
+View(AA_HH_unique_hits[unique(AA_HH_unique_hits$V10),c(1,10:13,16:18)])
