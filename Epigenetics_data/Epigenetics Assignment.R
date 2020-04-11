@@ -168,7 +168,7 @@ head(df.plot)
 # looking at snp LS049205.1:248
 # if you choose a different snp, you can create different plots.
 
-df.plot %>% filter(snp=="LS043685.1:10221") %>% 
+df.plot %>% filter(snp=="LS047747.1:3203") %>% 
   ggplot(., aes(x=group, y=methylation, color=group, fill=group)) +
   stat_summary(fun.data = "mean_se", size = 2) +
   geom_jitter(width = 0.1, size=3, pch=21, color="black")
