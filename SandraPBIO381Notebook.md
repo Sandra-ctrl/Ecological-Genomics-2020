@@ -2504,6 +2504,20 @@ write.table(file = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2
 
 ### Entry 66: 2020-04-13, Monday.   
 
+# PRESENTATION OF PROJECT PROPOSAL
+
+* Question: does an organism's nutritional status (diet) influence epigenetic response to insecticide induced stress in Colorado potato Beetle (CPB) *Leptinotarsa decemlienata
+
+* Background: epigentic marks are responsive to changes in diet, environment and xenobiotic stress. the study examines how nutritional factors in combination with toxic stress influence patterns of DNA methylation in CPB, a devastating pest of solanaceae crops. Dietary supplements; Vitamin B12 and Methionine building blocks required for DNA methlation maintenance were chosen to test that nutritional status of an organism may have an impact on epigentic responses to toxic stress.
+
+* Hypothesis: toxic stress will limit the synthesis of methyl donors resulting in lower levels of global methylation. nutritional supplements associated with DNA methylation may ameliorate oxidative stress response to xenobiotic exposure (insecticide)
+
+* Method: female beetles collected from organic farm in VT, Potato leaf discs treated with either water (control) or imidacloprid (treatment) then each treatment further administered Vit B12, methionine or water.
+Larvae weighed before and after 24hrs of receiving treatment.
+ *Genomic data isolate N=18, n= 3 larvae/group
+ *whole genome bisulphite sequencing on illumina
+ *FastQC used to assess quality of raw reads, trimming done with Trimgalore
+ *trimmed reads mapped to CPB reference genome using BISMARK
 
 
 ------    
@@ -2544,8 +2558,311 @@ write.table(file = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2
 
 ### Entry 71: 2020-04-20, Monday.   
 
+# Project analysis with methylKit
+
+```
+getwd()
+setwd("./")
+library(methylKit)
+library(grid)
+library(readr)
+library(ggplot2)
+
+dir<- "C:/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Beetle data"
 
 
+samples<- read.table("C:/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Beetle data/sample_id.txt", header = FALSE)
+
+samples
+
+files<- file.path(dir, samples$V1)
+all(file.exists(files))
+
+file.list<- as.list(files)
+
+
+nmlist<- as.list(gsub("_R1_001_val_1_bismark_bt2_pe.bismark.cov.gz", "", samples$V1))
+
+```
+
+# nmlist_2 <- nmlist[c("CC1","CC2", "CC3", "MC1", "MC2", "MC3", "BC1", "BC2", "BC3", "CM1", "CM2", "CM3", "MI1", "MI2", "MI3", "BI1", "BI2", "BI3")]
+
+
+                              
+```
+nmlist_2 <- nmlist[c("CC1","CC2", "CC3", "MC1", "MC2", "MC3", "BC1", "BC2", "BC3", "CM1", "CM2", "CM3", "MI1", "MI2", "MI3", "BI1", "BI2", "BI3")]
+
+myobj <- methRead(
+  location = file.list,
+  sample.id = nmlist,
+  assembly = "Ldec",
+  dbtype = "tabix",
+  context = "CpG",
+  resolution = "base", 
+  mincov = 10, 
+  treatment = c(1,1,1,
+                2,2,2,
+                0,0,0,
+                3,3,3,
+                4,4,4,
+                5,5,5),
+  pipeline = "bismarkCoverage",
+  dbdir = "C:/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Beetle data")
+
+
+pdf("initial_look.pdf") 
+getMethylationStats(myobj[[1]],plot=TRUE,both.strands=FALSE)
+dev.off()
+
+pdf("initial_look2.pdf") 
+getCoverageStats(raw_data[[2]],plot=TRUE,both.strands=FALSE)
+dev.off()
+```
+```
+getCoverageStats(myobj[[1]], plot = TRUE) 
+getCoverageStats(myobj[[2]], plot = TRUE) 
+getCoverageStats(myobj[[3]], plot = TRUE) 
+getCoverageStats(myobj[[4]], plot = TRUE) 
+getCoverageStats(myobj[[5]], plot = TRUE)
+getCoverageStats(myobj[[6]], plot = TRUE) 
+getCoverageStats(myobj[[7]], plot = TRUE) 
+getCoverageStats(myobj[[8]], plot = TRUE)
+getCoverageStats(myobj[[9]], plot = TRUE) 
+getCoverageStats(myobj[[10]], plot = TRUE) 
+getCoverageStats(myobj[[11]], plot = TRUE)
+getCoverageStats(myobj[[12]], plot = TRUE) 
+getCoverageStats(myobj[[13]], plot = TRUE) 
+getCoverageStats(myobj[[14]], plot = TRUE)
+getCoverageStats(myobj[[15]], plot = TRUE) 
+getCoverageStats(myobj[[16]], plot = TRUE) 
+getCoverageStats(myobj[[17]], plot = TRUE)
+getCoverageStats(myobj[[18]], plot = TRUE)
+
+getMethylationStats(myobj[[11]],plot=FALSE,both.strands=FALSE)
+
+Filter data by coverage; must have at least 10 reads per CpG and not exceed the 99.9th percentile (PCR duplicates), also tested with only 4 reads and similar results in terms of the number of diff methylated CpGs.
+```{r Filtering for Coverage}
+filtered_data <- filterByCoverage(myobj,lo.count=10,lo.perc=NULL,
+                                  hi.count=NULL,hi.perc=99.9)
+```
+
+Select only CpGs found in all 6 samples for analysis (destand =T can be used for CpG methylation to use both strands and incresae coverage, this should not be used for non-CpG though). You can decrease the minimum number of samples a particular CpG occurs in by using 'min.per.group =2L'.
+```{r Combine Data}
+meth_all_data <- unite(filtered_data, destrand=TRUE)
+```
+```
+meth<-methylKit::unite(filtered_data, mc.cores= 1, min.per.group = NULL, suffix= "united")
+```
+
+Filter the object above so we only take CpGs that have at least 25% methylation in at least one sample for analysis: this massively reduces the load for the multiple correction testing.
+```{r Filter for Percent Cs per Position}
+
+df_meth_all <- getData(meth)
+df_meth_all$percent_1 <-(df_meth_all$numCs1/df_meth_all$coverage1)*100
+df_meth_all$percent_2 <-(df_meth_all$numCs2/df_meth_all$coverage2)*100
+df_meth_all$percent_3 <-(df_meth_all$numCs3/df_meth_all$coverage3)*100
+df_meth_all$percent_4 <-(df_meth_all$numCs4/df_meth_all$coverage4)*100
+df_meth_all$percent_5 <-(df_meth_all$numCs5/df_meth_all$coverage5)*100
+df_meth_all$percent_6 <-(df_meth_all$numCs6/df_meth_all$coverage6)*100
+df_meth_all$percent_7 <-(df_meth_all$numCs7/df_meth_all$coverage7)*100
+df_meth_all$percent_8 <-(df_meth_all$numCs8/df_meth_all$coverage8)*100
+df_meth_all$percent_9 <-(df_meth_all$numCs9/df_meth_all$coverage9)*100
+df_meth_all$percent_10<-(df_meth_all$numCs10/df_meth_all$coverage10)*100
+df_meth_all$percent_11 <-(df_meth_all$numCs11/df_meth_all$coverage11)*100
+df_meth_all$percent_12 <-(df_meth_all$numCs12/df_meth_all$coverage12)*100
+df_meth_all$percent_13 <-(df_meth_all$numCs13/df_meth_all$coverage13)*100
+df_meth_all$percent_14 <-(df_meth_all$numCs14/df_meth_all$coverage14)*100
+df_meth_all$percent_15 <-(df_meth_all$numCs15/df_meth_all$coverage15)*100
+df_meth_all$percent_16 <-(df_meth_all$numCs16/df_meth_all$coverage16)*100
+df_meth_all$percent_17 <-(df_meth_all$numCs17/df_meth_all$coverage17)*100
+df_meth_all$percent_18 <-(df_meth_all$numCs18/df_meth_all$coverage18)*100
+
+
+subset_meth <- subset(df_meth_all, percent_1 >= 25 | percent_2 >= 25 | percent_3 >= 25 |
+                        percent_4 >= 25 | percent_5 >= 25 | percent_6 >= 25 | percent_7 >= 25 | percent_8 >= 25| percent_9 >= 25 | percent_10 >= 25 | percent_11 >= 25 | percent_12 >= 25 |percent_13 >= 25 | percent_14 >= 25 | percent_15 >= 25 | percent_16 >= 25 | percent_17 >= 25 | percent_18 >= 25) 
+
+row_numbers <- as.vector(row.names(subset_meth))
+row_numbers <- as.numeric(row_numbers) 
+subset_methBase <- select(meth, row_numbers)
+```
+
+# end of filtering 
+write.table(subset_methBase, file="subset_meth_25.txt")
+
+#correlation plots -takes a long time to plot
+
+# getCorrelation(meth,plot=TRUE)
+clusterSamples(subset_methBase, dist="correlation", method="ward", plot=F)
+#clustering by methylation similarity
+PCASamples(subset_methBase, screeplot=F) 
+#samples are clustering together..
+
+#calculate percent meth using the subsetted data with all samples
+
+pm<-percMethylation(subset_methBase)
+tot<- colSums(pm) #total methylated C's
+
+#plotting distribution of per meth values
+ggplot(gather(as.data.frame(pm)), aes(value)) + 
+  geom_histogram(bins = 10, color="black", fill="grey") + 
+  facet_wrap(~key)
+
+ggplot(gather(as.data.frame(pm)), aes(value)) + geom_histogram(bins = 10, colors="black", fill="grey") + facet_wrap(~key)
+par(mfrow=c(1,1))
+sp.means<- colMeans(pm) #colmeans- column means of per meth for each sample
+
+
+#reading in merged file 
+meth <- methylKit:::readMethylBaseDB(
+  dbpath ="C:/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2020/Beetle data/methylDB 2020-04-19 xAJ/methylBase_united.txt.bgz",
+  dbtype = "tabix",
+  sample.id = unlist(nmlist),
+  assembly = "Ldec", 
+  context = "CpG",
+  resolution = "base",
+  treatment = c(
+    1,1,1,
+    2,2,2,
+    0,0,0,
+    3,3,3,
+    4,4,4,
+    5,5,5),
+  destrand = FALSE)
+
+#plotting by mean per meth/tot meth Cs
+tot<- colSums(pm) #total methylated C's
+
+sample= names(sp.means)
+group= c("Control", "Control", "Control", "Insecticide", "Insecticide", "Insecticide", "Control", "Control", "Control", "Insecticide", "Insecticide", "Insecticide", "Control", "Control", "Control", "Insecticide", "Insecticide", "Insecticide" )
+
+treat= c("B12", "B12", "B12", "B12", "B12", "B12", "control", "control", "control", "control", "control", "control", "methionine","methionine", "methionine","methionine","methionine","methionine")
+methylation = sp.means
+
+pf<-data.frame(sample, treat, group, tot)
+
+write.table(pf, file="pf.txt")
+# library(ggpubr)
+# library(betareg)
+
+p<-ggplot(pf, aes(x=treat, y=methylation, fill= treat)) +  geom_point(aes(color= group)) + labs(x= "Group", y="% methylation", title ="Mean % methylation by treatment ") + theme_bw() + theme(text=element_text(size=14)) 
+p 
+#a lot of overlap among means
+
+p<-ggplot(pf, aes(x=treat, y=tot, fill= group)) +  geom_boxplot() + labs(x= "Group", y="methylated C's", title ="total no. methylated C's") + theme_bw() + theme(text=element_text(size=14))
+p
+
+my_test<-summary(aov(tot~ treat*group, pf)) 
+
+#contrast Control (water-water) vs Imidaclorprid-control
+
+meth_sub_CvCM <- reorganize(subset_methBase, sample.ids = c("CC1","CC2", "CC3", "CM1", "CM2", "CM3"), 
+                            treatment = c(0,0,0,3,3,3),
+                            save.db = FALSE)
+
+meth_sub_CvCM
+
+#as in ecol genomics- calculate diff methylation for this contrast
+myDiff<- calculateDiffMeth(meth_sub_CvCM, overdispersion = "MN", mc.cores = 1, suffix= "CC_CM",
+                           adjust = "qvalue",
+                           test = "Chisq")
+
+# as in marshall et al- no overdispersion correction...
+diff_meth_bees<- calculateDiffMeth(meth_sub_CvCM, mc.cores = 1, suffix= "CC_CM")
+getMethylDiff(diff_meth_bees,difference=5,qvalue=0.05) #without correcting for overdispersion as in marshall et al
+which(getData(diff_meth_bees)$qvalue < 0.05) #51 diff snps
+min(getData(diff_meth_bees)$qvalue)
+
+
+#follwing the ecol genomics tutorial
+# get all differentially methylated bases
+
+myDiff=getMethylDiff(myDiff,difference=10,qvalue=0.05) #3 diff snps
+
+# myDiff_1<- getMethylDiff(myDiff_1, qvalue= 0.05, difference=10)
+dim(myDiff)
+getData(myDiff)$qvalue
+which(getData(myDiff)$qvalue < 0.05)
+min(getData(myDiff)$qvalue)
+
+
+# hist(getData(myDiff)$meth.diff)
+
+# hyper=getMethylDiff(myDiff,difference=10,qvalue=0.01,type="hyper")
+# hypo=getMethylDiff(myDiff_1,difference=10,qvalue=0.01,type="hypo")
+#percent meth of contrast
+pm_1 <- percMethylation(meth_sub_CvCM)
+# tot_cvsi<- colSums(pm_1)
+#
+#############ploting total no. of meth C's by group
+# sample_cvsi= colnames(pm_1)
+# group= c("Control", "Control", "Control", "Insecticide", "Insecticide", "Insecticide")
+# 
+# total = tot_cvsi
+# 
+# pf_cvsi<-data.frame(sample_cvsi, group, total)
+# p_cvsi<-ggplot(pf_cvsi, aes(x=group, y=total, fill= group)) +  geom_boxplot() + labs(x= "Group", y="methylated C's", title ="total no. methylated C's") + theme_bw() + theme(text=element_text(size=14))
+# p_cvsi
+################done
+
+# head(pm_1)
+# dim(pm_1)
+write.table(pm_1, file="pm_CvsI.txt")
+
+
+
+sig.in <- as.numeric(row.names(myDiff))
+pm.sig <- pm[sig.in]
+#pm_1[sig.in_1, ] : subscript out of bounds
+# PCASamples(subset_methBase)
+
+library(pheatmap)
+
+#heat map wont work bc pm.sig isnt running
+require(pheatmap)
+my_heatmap <- pheatmap(pm.sig, show_rownames = FALSE) #need to run on terminal
+
+#normalizing 
+ctrmean_1 <- rowMeans(pm.sig_1[,1:3])
+h.norm_1<- (pm.sig_1-ctrmean_1) 
+
+my_heatmap_1 <- pheatmap(h.norm_1,
+                         show_rownames = FALSE)
+
+#also not working
+din_1 <- getData(myDiff)[,1:3]
+df.out_1 <- cbind(paste(getData(myDiff)$chr, getData(myDiff)$start, sep=":"), din_1, pm.sig_1)
+colnames(df.out_1) <- c("snp", colnames(din_1), colnames(df.out_1[5:ncol(df.out_1)]))
+df.out_1 <-(cbind(df.out_1,getData(myDiff_1)[,5:7]))
+
+df.plot_1 <-df.out_1[ ,c(1,5:10)] %>% pivot_longer(-snp, values_to = "methylation")
+df.plot_1$group <- substr(df.plot_1$name,1,2)
+
+head(df.plot_1)
+
+write.table(df.plot_1, file="dfCvsI.txt")
+
+# plotting diff meth snps- ignore
+one<- df.plot_1 %>% filter(snp=="AYNB02000327.1:1877") %>% 
+  ggplot(., aes(x=group, y=methylation, color=group, fill=group)) +
+  stat_summary(fun.data = "mean_se", size = 1) +
+  geom_jitter(width = 0.1, size=3, pch=21) +
+  theme_classic() +
+  labs(title = "Control vs. Inseciticide", x= "Treatment", y= "% methylated sites")  + theme(text=element_text(size=12), legend.position ="none")
+
+
+########################################################################################################
+#contrast Control (water-water) vs B12-control
+
+meth_sub_CvBC <- reorganize(subset_methBase, sample.ids = c("CC1","CC2", "CC3", "BC1", "BC2", "BC3"), 
+                            treatment = c(0,0,0,1,1,1),
+                            save.db = FALSE)
+
+meth_sub_CvBC
+
+#as in ecol genomics- calculate diff methylation for this contrast
+myDiff_CvBC<- calculateDiffMeth(meth_sub_CvBC, overdispersion = "MN&quo...
+
+* apply to different contrasts and save txt files
 ------    
 <div id='id-section72'/>   
 
@@ -2600,6 +2917,7 @@ write.table(file = "/Users/sandr/OneDrive/Documents/GitHub/Ecological-Genomics-2
 
 ### Entry 78: 2020-04-29, Wednesday.   
 
+# Final Project Presentation
 
 
 ------    
