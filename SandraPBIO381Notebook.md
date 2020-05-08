@@ -2918,6 +2918,77 @@ myDiff_CvBC<- calculateDiffMeth(meth_sub_CvBC, overdispersion = "MN&quo...
 ### Entry 78: 2020-04-29, Wednesday.   
 
 # Final Project Presentation
+Nutritional epigenetics in the Colorado potato beetle, Leptinotarsa decemlineata
+
+•	Insecticides are known to be a major driving force in the evolution of pests
+•	The evolutionary process for the most part remains to be well understood
+•	Epigenetics could be playing a role in the expression of genes
+•	It has been suggested that diet might affect how DNA methylation occurs (Sehlub, 2002)
+•	Toxic stress may limit the synthesis of methyl donors
+•	Intake of vitamin B12 or methionine may reduce this limitation by increasing levels of methylation
+Colorado potato beetle
+(Leptinotarsa decemlineata)
+•	Widely distributed
+•	Has remarkable ability to rapidly develop resistance
+Questions
+1-How do patterns of DNA methylation change when beetles are exposed to insecticides? 
+2- Are beetles with “nutritional” diets better tolerating toxic stress?
+3- How does weight vary along methylation patterns?
+Significance: Why?
+
+Better understanding of this has the potential to help us understand the role of epigenetics in insecticide resistance and help design more effective integrated pest management strategies.
+Approach
+Experimental Design:
+•	CPB larvae collected from organic VT farms and maintained in lab conditions
+•	Weight was taken before & after treatments
+•	Half exposed to insecticide (imidacloprid) 
+•	Given three diet types
+•	18 larvae: 3/treatment
+•	DNA isolation followed by lib prep
+•	Whole genome bisulfite sequencing
+
+# Results
+•	ANOVA doesn’t reveal differences in percentages of methylation.
+•	Data do not follow ANOVA assumptions (Normality and Homogeneity of variances).
+•	Neither transforming the data nor Kruskal-Wallis test show different results.
+
+# Summary of DMS
+* 15,237 sites were analyzed
+* Total of 9 separate contrasts were performed
+* Required 10% methylation q-value < 0.05 
+* Logistic regression with no overdispersion correction
+
+# Weight gain was influenced by exposure to insecticide and food treatments.  
+•	ANOVA reveals lower weight gains in larvaes exposed to insecticide. 
+•	Food treatments alleviated losses in weight gain. 
+•	Linear model does not show a relation between weight gain and percentages of methylation
+•	lm(formula = weight_gain ~ perc_methylation + food_trt * insect_trt,data = PCA_Data)
+•	Percentage of methylation: F(1,6) = 0.001, p < 0.9262
+
+# Conclusions
+•	Percent methylation was not influenced by exposure to insecticide or food treatments
+•	Weight gain was influenced by exposure to insecticide and food treatments 
+•	Identified unique methylated sites among food treatments but not insecticide
+
+# Limitations
+•	Multiple groups were not analyzed together within the methylKit statistical tests- couldn’t test for interactions
+•	Overdispersion correction not accounted for, increasing in false positives 
+•	Genomic annotations not complete
+•	Lack of DM analysis tailored to invertebrate epigenomes (sparse methylation) 
+
+# Future directions
+•	Perform analysis on EdgeR or similar program
+•	Attain GO term info to perform functional enrichment analysis
+•	Examine differentially methylated regions 
+•	Using different insecticide concentrations
+•	Examine different timepoints (duration)- generational effects of diet
+•	Control for herbivory rates
+•	Focus on tissue-specific methylation levels
+•	Increase sample size or pool individuals 
+•	Complement with RNAseq
+
+
+
 
 
 ------    
